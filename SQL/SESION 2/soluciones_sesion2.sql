@@ -70,21 +70,47 @@ where book_order.quantity>5
 
 /*9. Obtener los clientes que han realizado más de un pedido en la misma fecha. Columnas a mostrar
 en la consulta: customer_Id, customer_name, order_date.*/
-select order_Id, customer.customer_Id, name, order_date
-from orderr join customer on orderr.customer_id=customer.customer_id;
-select customer.customer_id
+select DISTINCT C.customer_Id, name, order_date
+from orderr R join customer C on R.customer_id=C.customer_id
+WHERE c.customer_id IN (select customer.customer_id
 from orderr join customer on orderr.customer_id=customer.customer_id
 group by customer.customer_id, orderr.order_date
-having count(*)>1
+having count(*)>1)
+;
 
 /*10. Obtener los clientes que han comprado los libros ‘Dracula’ o ‘1984’. Columnas a mostrar en la
 consulta: customer_Id, customer_name.*/
+select distinct customer.customer_Id, customer.name
+from orderr join customer on orderr.customer_id=customer.customer_id  
+            join book_order on orderr.order_id=book_order.order_id 
+            join book on book_order.isbn=book.isbn
+where book.title='Dracula' or book.title='1984';
 
 /*11. Obtener los clientes que han comprado tanto el libro ‘Pride and Prejudice’ y ‘The Little Prince’.
-Columnas a mostrar en la consulta: customer_Id, customer_name.
+Columnas a mostrar en la consulta: customer_Id, customer_name.*/
+select distinct customer.customer_Id, customer.name
+from orderr join customer on orderr.customer_id=customer.customer_id  
+            join book_order on orderr.order_id=book_order.order_id 
+            join book on book_order.isbn=book.isbn
+where book.title='Pride and Prejudice' 
+INTERSECT
+select distinct customer.customer_Id, customer.name
+from orderr join customer on orderr.customer_id=customer.customer_id  
+            join book_order on orderr.order_id=book_order.order_id 
+            join book on book_order.isbn=book.isbn
+where book.title='The Little Prince';
 /*12. Obtener los clientes y los libros que han proporcionado un beneficio de al menos 50€ en un
 mismo pedido (es decir, la compra de un libro en particular, en un mismo pedido, ha
 proporcionado un beneficio de al menos 50€, por lo que habrá que tener en cuenta el número de
 copias de ese libro que se han solicitado en el pedido). El beneficio se calcula como la diferencia
 entre el precio de venta al público (sale_price) y el precio de adquisición por parte del editor
 (purchase_price). Columnas a mostrar en la consulta: customer_Id, book_title, profit.*/
+select orderr.order_id,customer_Id, title, (sale_price-purchase_price)*quantity as profit
+from orderr join book_order on orderr.order_id=book_order.order_id 
+            join book on book_order.isbn=book.isbn;
+select sum((sale_price-purchase_price)*quantity )as profit
+from orderr join book_order on orderr.order_id=book_order.order_id 
+            join book on book_order.isbn=book.isbn
+order by orderr.order_id;            
+
+
