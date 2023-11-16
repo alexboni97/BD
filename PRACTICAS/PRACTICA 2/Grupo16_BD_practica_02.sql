@@ -50,6 +50,69 @@
 -- forzar que la base de datos nunca deje almacenar dos empleados con el mismo NIF.
 
 -- Escribir a continuación el código SQL que genera la estructura completa de la base de datos. 
+alter session set nls_date_format = 'DD-MM-YYYY'
+
+CREATE TABLE EMPLEADO ( 
+    nombre varchar2(10),
+    edad int,
+    titulacion varchar2(30),
+    numEmpleado INTEGER PRIMARY KEY,
+    nif varchar2(15) UNIQUE NOT NULL
+);
+
+CREATE TABLE INVESTIGADOR( 
+    id INTEGER PRIMARY KEY,
+    nombreProyecto varchar2(20),
+    FOREIGN KEY (id) REFERENCES EMPLEADO(numEmpleado)
+);
+
+CREATE TABLE TECNICO( 
+    id INTEGER PRIMARY KEY,
+    FOREIGN KEY (id) REFERENCES EMPLEADO(numEmpleado)
+);
+
+CREATE TABLE TELESCOPIO( 
+    potencia varchar2(20),
+    resolucion varchar2(20),
+    fechaUltRevision DATE, 
+    numSerie INTEGER PRIMARY KEY
+);
+
+CREATE TABLE INSPECCIONA( 
+    idTecnico INTEGER,
+    idTelescopio INTEGER,
+    fechaInsp DATE,
+    PRIMARY KEY(idTecnico, idTelescopiom, fechaInsp),
+    FOREIGN KEY (idTecnico) REFERENCES TECNICO(id),
+    FOREIGN KEY (idTelescopio) REFERENCES TELESCOPIO(numSerie)
+);
+
+CREATE TABLE CUERPO_CELESTE(
+    numRegistro INTEGER PRIMARY KEY,
+    nombre varchar2(20),
+    tipo varchar2(20)
+);
+
+CREATE TABLE OBSERVACION( 
+    idInvestigador INTEGER,
+    fechaObs DATE,
+    horaObs varchar2(30),
+    textoInforme varchar2(50),
+    idTelescopio INTEGER REFERENCES TELESCOPIO(numSerie),
+    PRIMARY KEY(idInvestigador, fechaObs, horaObs),
+    FOREIGN KEY (idInvestigador) REFERENCES INVESTIGADOR(id),
+    FOREIGN KEY (idTelescopio) REFERENCES TELESCOPIO(numSerie)
+);
+
+CREATE TABLE EXAMINA(
+    idInvestigador INTEGER,
+    fechaObs DATE, 
+    horaObs varchar2(30),
+    idCuerpoCeleste INTEGER,
+    PRIMARY KEY(idInvestigador, fechaObs, horaObs, idCuerpoCeleste),
+    FOREIGN KEY (idInvestigador, fechaObs, horaObs) REFERENCES OBSERVACION(idInvestigador, fechaObs, horaObs),
+    FOREIGN KEY (idCuerpoCeleste) REFERENCES CUERPO_CELESTE(numRegistro)
+);
 
 
 
@@ -194,37 +257,62 @@ having count (m.idmed)>1;
 -- -----------------------------------------------------------------
 -- 2. Lista de todos los medicamentos (id, denominación) y el número
 -- de pacientes con alergia a cada medicamento.  Si para un
--- medicamento no hay pacientes que sean alérgicos, debe mostrar un 0.--nvl(pre.idpaciente,'0')
-select m.idmed, m.denominacion, count(pre.)
-from medicamento m left join prescripcion pre on m.idmed=pre.idmed left join paciente p on p.idpaciente=pre.idpaciente
-group by m.idmed,m.denominacion,pre.idpaciente
-
+-- medicamento no hay pacientes que sean alérgicos, debe mostrar un 0.
+select m.idmed, m.denominacion, count (p.idpaciente) as numpacientes
+from medicamento m left join alergia a on m.tipomed=a.tipomed left join paciente p on p.idpaciente=a.idpaciente
+group by m.idmed,m.denominacion
 ;
 
-
+select*
+from medicamento m left join alergia a on m.tipomed=a.tipomed left join paciente p on p.idpaciente=a.idpaciente
+;
 -- -----------------------------------------------------------------
 -- 3. Lista de los pacientes (id, nombre) que no son alérgicos a
 -- ninguno de los medicamentos que se les han prescrito.
+SELECT distinct p.idpaciente,p.nombre
+FROM paciente p join prescripcion pre on p.idpaciente=pre.idpaciente
+where p.idpaciente not in (
+        SELECT pre.idpaciente
+        from alergia a join medicamento m on a.tipomed=m.tipomed join prescripcion pre on m.idmed=pre.idmed and pre.idpaciente=a.idpaciente);
 
+SELECT *
+FROM paciente p join prescripcion pre on p.idpaciente=pre.idpaciente;
+select *
+from alergia a join medicamento m on a.tipomed=m.tipomed join prescripcion pre on m.idmed=pre.idmed and pre.idpaciente=a.idpaciente;
 
 
 -- -----------------------------------------------------------------
 -- 4. Lista de los tipos de medicamentos (tipo, descripción) que
 -- tienen más casos de alergias. El resultado debe incluir el 
 -- número de casos de alergias.
-
-
+select t.idtipo,t.descripcion,count (t.idtipo) as numcasos
+from alergia a join tipo_medicamento t on a.tipomed=t.idtipo
+group by t.idtipo,t.descripcion;
 
 -- -----------------------------------------------------------------
 -- 5. Lista de medicamentos (id, denominación) que han sido prescritos
 -- a todos los pacientes.
+select m.idmed,m.denominacion
+from medicamento m 
+where m.idmed=( select pre.idmed
+                from prescripcion pre
+                group by pre.idmed
+                having count(distinct pre.idpaciente)=(select count(p.idpaciente)
+                                                        from paciente p));
 
+select pre.idmed
+from prescripcion pre
+group by pre.idmed
+having count(distinct pre.idpaciente)=(select count(p.idpaciente)
+                from paciente p) ;
 
 
 -- -----------------------------------------------------------------
 -- 6. Lista de los pacientes (id, nombre) que solamente tienen alergia
 -- a las penicilinas.
-
-
-
-
+select p.idpaciente,p.nombre
+from paciente p join alergia a on p.idpaciente=a.idpaciente
+where a.tipomed='penicilinas' and  p.idpaciente not in(
+        select pa.idpaciente
+        from paciente pa join alergia a on pa.idpaciente=a.idpaciente
+        where a.tipomed<>'penicilinas');
