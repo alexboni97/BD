@@ -99,6 +99,11 @@ from orderr join customer on orderr.customer_id=customer.customer_id
             join book_order on orderr.order_id=book_order.order_id 
             join book on book_order.isbn=book.isbn
 where book.title='The Little Prince';
+--OPCION 2 terminar
+SELECT customer_id,name
+from customer
+where customer_id in(select..)
+and customer_id in (select)
 /*12. Obtener los clientes y los libros que han proporcionado un beneficio de al menos 50€ en un
 mismo pedido (es decir, la compra de un libro en particular, en un mismo pedido, ha
 proporcionado un beneficio de al menos 50€, por lo que habrá que tener en cuenta el número de

@@ -50,14 +50,20 @@
 -- forzar que la base de datos nunca deje almacenar dos empleados con el mismo NIF.
 
 -- Escribir a continuación el código SQL que genera la estructura completa de la base de datos. 
-alter session set nls_date_format = 'DD-MM-YYYY'
+alter session set nls_date_format = 'DD-MM-YYYY';
 
+drop table observacion;
+drop table examina;
+drop table inspecciona;
+drop table tecnico;
+drop table investigador;
+drop table empleado;
 CREATE TABLE EMPLEADO ( 
     nombre varchar2(10),
-    edad int,
+    edad integer,
     titulacion varchar2(30),
     numEmpleado INTEGER PRIMARY KEY,
-    nif varchar2(15) UNIQUE NOT NULL
+    nif varchar2(9) UNIQUE NOT NULL
 );
 
 CREATE TABLE INVESTIGADOR( 
@@ -82,7 +88,7 @@ CREATE TABLE INSPECCIONA(
     idTecnico INTEGER,
     idTelescopio INTEGER,
     fechaInsp DATE,
-    PRIMARY KEY(idTecnico, idTelescopiom, fechaInsp),
+    PRIMARY KEY(idTecnico, idTelescopio, fechaInsp),
     FOREIGN KEY (idTecnico) REFERENCES TECNICO(id),
     FOREIGN KEY (idTelescopio) REFERENCES TELESCOPIO(numSerie)
 );
@@ -96,25 +102,21 @@ CREATE TABLE CUERPO_CELESTE(
 CREATE TABLE OBSERVACION( 
     idInvestigador INTEGER,
     fechaObs DATE,
-    horaObs varchar2(30),
-    textoInforme varchar2(50),
-    idTelescopio INTEGER REFERENCES TELESCOPIO(numSerie),
-    PRIMARY KEY(idInvestigador, fechaObs, horaObs),
+    textoInforme varchar2(250) NOT NULL,
+    idTelescopio INTEGER NOT NULL,
+    PRIMARY KEY(idInvestigador, fechaObs),
     FOREIGN KEY (idInvestigador) REFERENCES INVESTIGADOR(id),
     FOREIGN KEY (idTelescopio) REFERENCES TELESCOPIO(numSerie)
 );
 
 CREATE TABLE EXAMINA(
     idInvestigador INTEGER,
-    fechaObs DATE, 
-    horaObs varchar2(30),
+    fechaObs DATE,
     idCuerpoCeleste INTEGER,
-    PRIMARY KEY(idInvestigador, fechaObs, horaObs, idCuerpoCeleste),
-    FOREIGN KEY (idInvestigador, fechaObs, horaObs) REFERENCES OBSERVACION(idInvestigador, fechaObs, horaObs),
+    PRIMARY KEY(idInvestigador, fechaObs,idCuerpoCeleste),
+    FOREIGN KEY (idInvestigador, fechaObs) REFERENCES OBSERVACION(idInvestigador, fechaObs),
     FOREIGN KEY (idCuerpoCeleste) REFERENCES CUERPO_CELESTE(numRegistro)
 );
-
-
 
 -- -------------------------------------------------------------
 -- PARTE 2: INSERCIÓN DE DATOS EN TABLAS
@@ -125,8 +127,34 @@ CREATE TABLE EXAMINA(
 -- que muestren la aplicación de integridad referencial.
 
 -- Escribir a continuación el código SQL que inserta los datos en las tablas.
+-- inserccion de datos nuevos en las tablas cuerpo_celeste,empleado,telescopio que no tendran ningun fallo por integridad referencial, ya que es una tabla independiente.
+INSERT INTO CUERPO_CELESTE (numRegistro, nombre, tipo) VALUES (1, 'LUZ', 'COMETAS');
+INSERT INTO CUERPO_CELESTE (numRegistro, nombre, tipo) VALUES (2, 'FUEGO', 'PLANETAS');
+INSERT INTO CUERPO_CELESTE (numRegistro, nombre, tipo) VALUES (3, 'HIELO', 'ESTRELLAS');
+INSERT INTO CUERPO_CELESTE (numRegistro, nombre, tipo) VALUES (4, 'ESTELAR', 'METEOROS');
+
+INSERT INTO EMPLEADO(nombre, edad, titulacion, numEmpleado, nif) VALUES ('Pablo', 20, 'Grado', 1, '12345678B');
+INSERT INTO EMPLEADO(nombre, edad, titulacion, numEmpleado, nif) VALUES ('Pepe', 30, 'Grado', 2, '21214545X');
+INSERT INTO EMPLEADO(nombre, edad, titulacion, numEmpleado, nif) VALUES ('Luis', 25, 'Master', 3, '09091234P');
+INSERT INTO EMPLEADO(nombre, edad, titulacion, numEmpleado, nif) VALUES ('Elena', 23, 'Doctorado', 4, '54619312K'); 
+
+INSERT INTO TELESCOPIO(potencia, resolucion, fechaUltRevision, numSerie) VALUES ('100', '50', TO_DATE('15-10-1995'), 1);
+INSERT INTO TELESCOPIO(potencia, resolucion, fechaUltRevision, numSerie) VALUES ('200', '60', TO_DATE('26-09-1995'), 2);
+INSERT INTO TELESCOPIO(potencia, resolucion, fechaUltRevision, numSerie) VALUES ('300', '70', TO_DATE('07-07-1995'), 3);
+INSERT INTO TELESCOPIO(potencia, resolucion, fechaUltRevision, numSerie) VALUES ('400', '80', TO_DATE('18-02-1995'), 4);
+
+-- insercion de datos en las tablas investigador, tecnico observacion respetando la integridad referencial, es decir, con los numEmpleado de la tabla Empleado insertados
+INSERT INTO INVESTIGADOR VALUES (1,'CASCADAS');
+INSERT INTO INVESTIGADOR VALUES (2,'PROYECTX');
+INSERT INTO TECNICO VALUES (3);
+INSERT INTO TECNICO VALUES (4);
+INSERT INTO OBSERVACION VALUES (1,TO_DATE('18-02-2022 05:00','DD/MM/YYYY HH:MI'),'CUERPO CELESTE LEIDO', 2);
 
 
+--insercion de datos en las tablas investigador, tecnico, observacion no respetando la integridad referencial, por lo tanto, nos debe dar un fallo al insertar
+INSERT INTO INVESTIGADOR VALUES (5,'zzzffff');--NO EXISTE EL EMPLEADO 5
+INSERT INTO TECNICO VALUES (8);--NO EXISTE EL TECNICO 8
+INSERT INTO OBSERVACION VALUES (10,TO_DATE('18-02-2022 05:00','DD/MM/YYYY HH:MI'),'CUERPO CELESTE LEIDO', 5);--NO EXISTE EL TELESCOPIO 5 NI EL INVESTIGADOR 10
 
 -- -------------------------------------------------------------
 -- PARTE 3: CREACIÓN DE CONSULTAS
@@ -229,7 +257,6 @@ INSERT INTO ALERGIA VALUES (106,'penicilinas');
 COMMIT;
 
 
-
 -- -----------------------------------------------------------------
 -- 1. Lista de pacientes que incluya id, nombre del paciente y el
 -- gasto total en medicamentos de tipo 'penicilinas', de aquellos
@@ -247,12 +274,11 @@ where pa.idpaciente in (
         )
 group by pa.idpaciente,pa.nombre
 ;
-select *
-from prescripcion;
-select pre.idpaciente,m.tipomed,count (m.idmed)
-from prescripcion pre join medicamento m on pre.idmed=m.idmed
+--SOLUCION PROFESOR
+select  pa.idpaciente,pa.nombre, sum(pre.numdosis*m.preciodosis) as totalGastado
+from paciente pa join prescripcion pre on pa.idpaciente=pre.idpaciente join medicamento m on m.idmed=pre.idmed
 where m.tipomed='penicilinas'
-group by pre.idpaciente,m.tipomed
+group by pa.idpaciente,pa.nombre
 having count (m.idmed)>1;
 -- -----------------------------------------------------------------
 -- 2. Lista de todos los medicamentos (id, denominación) y el número
@@ -262,10 +288,12 @@ select m.idmed, m.denominacion, count (p.idpaciente) as numpacientes
 from medicamento m left join alergia a on m.tipomed=a.tipomed left join paciente p on p.idpaciente=a.idpaciente
 group by m.idmed,m.denominacion
 ;
-
-select*
-from medicamento m left join alergia a on m.tipomed=a.tipomed left join paciente p on p.idpaciente=a.idpaciente
+--solution profesor
+select m.idmed, m.denominacion, count (a.tipomed) as numpacientes
+from medicamento m left join alergia a on m.tipomed=a.tipomed 
+group by m.idmed,m.denominacion
 ;
+
 -- -----------------------------------------------------------------
 -- 3. Lista de los pacientes (id, nombre) que no son alérgicos a
 -- ninguno de los medicamentos que se les han prescrito.
@@ -275,19 +303,21 @@ where p.idpaciente not in (
         SELECT pre.idpaciente
         from alergia a join medicamento m on a.tipomed=m.tipomed join prescripcion pre on m.idmed=pre.idmed and pre.idpaciente=a.idpaciente);
 
-SELECT *
-FROM paciente p join prescripcion pre on p.idpaciente=pre.idpaciente;
-select *
-from alergia a join medicamento m on a.tipomed=m.tipomed join prescripcion pre on m.idmed=pre.idmed and pre.idpaciente=a.idpaciente;
-
-
 -- -----------------------------------------------------------------
 -- 4. Lista de los tipos de medicamentos (tipo, descripción) que
 -- tienen más casos de alergias. El resultado debe incluir el 
 -- número de casos de alergias.
-select t.idtipo,t.descripcion,count (t.idtipo) as numcasos
+
+CREATE VIEW NUMCASOS_MEDICAMENTOS_ALERGIA(NUMCASOS)AS(
+select count (t.idtipo) as numcasos
 from alergia a join tipo_medicamento t on a.tipomed=t.idtipo
-group by t.idtipo,t.descripcion;
+group by t.idtipo,t.descripcion)
+;
+select t.idtipo,t.descripcion
+from alergia a join tipo_medicamento t on a.tipomed=t.idtipo
+group by t.idtipo,t.descripcion
+HAVING count (t.idtipo) = (SELECT MAX(NUMCASOS) FROM NUMCASOS_MEDICAMENTOS_ALERGIA)
+;
 
 -- -----------------------------------------------------------------
 -- 5. Lista de medicamentos (id, denominación) que han sido prescritos
@@ -299,12 +329,6 @@ where m.idmed=( select pre.idmed
                 group by pre.idmed
                 having count(distinct pre.idpaciente)=(select count(p.idpaciente)
                                                         from paciente p));
-
-select pre.idmed
-from prescripcion pre
-group by pre.idmed
-having count(distinct pre.idpaciente)=(select count(p.idpaciente)
-                from paciente p) ;
 
 
 -- -----------------------------------------------------------------
