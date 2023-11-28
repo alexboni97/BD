@@ -5,8 +5,7 @@
 -- Procedimientos almacenados
 
 -- Nombres de los estudiantes participantes: 
--- ALEX GUILLERMO BONILLA TACO
--- PABLO
+-- <<Escribir aquí vuestros nombres para saber quién ha estado trabajando en este fichero.>>
 
 -- -------------------------------------------------------------------------
 
@@ -163,7 +162,44 @@ Sugerencia: utilizar SELECT...INTO para recuperar la información del
 vuelo de la base de datos. Se debería controlar la excepción en caso
 de que el vuelo no exista.*/
 
+CREATE  OR REPLACE PROCEDURE pr_FLIGHT_print(vuelo in number) as
 
+-- variable solo visible dentro del procedimiento
+-- vars de trabajo
+
+    p_num_vuelo FWFLIGHT.FLNO%TYPE;
+    p_depairport FWFLIGHT.deptairport%TYPE;
+    p_destairport FWFLIGHT.destairport%TYPE;
+    p_distance FWFLIGHT.distance%TYPE;
+
+-- cursor para leer datos
+      CURSOR cursor_vuelos IS
+      select flno,deptairport,destairport,distance
+      from fwflight;
+BEGIN
+  OPEN cursor_vuelos;
+
+LOOP
+  FETCH  cursor_vuelos
+    INTO p_num_vuelo,p_depairport,p_destairport,p_distance;
+  EXIT WHEN cursor_vuelos%NOTFOUND;
+--            --> atencion  DBMS_output.put_line necesita "set serveroutput on"
+  IF p_num_vuelo LIKE vuelo THEN
+  p_distance := p_distance*1.60934;
+  DBMS_output.put_line('Informacion del vuelo: '||p_num_vuelo||'-'||p_depairport||'-'||p_destairport||' ('||p_distance||' km)');
+  END IF;
+END LOOP;
+IF cursor_vuelos%ISOPEN 
+   THEN  CLOSE cursor_vuelos; 
+END IF;
+
+EXCEPTION
+  WHEN NO_DATA_FOUND THEN
+   DBMS_output.put_line('¡No se ha encontrado el nÃºmero de vuelo: '||vuelo||'!');
+   IF cursor_vuelos%ISOPEN 
+     THEN  CLOSE cursor_vuelos; 
+   END IF;
+END;
 
 
 
@@ -179,6 +215,15 @@ la consola. Por ejemplo, si se invoca el procedimiento con el vuelo 7789, el
 resultado debería ser el siguiente (la distancia ha de mostrarse en kilómetros,
 no en millas):
 
+*/
+
+select a.pid,a.name,count(e.eid)as numEmp,round(avg(salary),2)as mediasalario
+from FWPlane a join  FWCertificate c on a.pid=c.pid join FWEmpl e on e.eid=c.eid
+where a.maxFlLength>=(select v.distance from fwflight v where v.flno=7789) 
+group by a.pid,a.name
+order by a.pid
+;
+/*
 -----------------------------------------------------------------
 Aviones para el vuelo: 7789-Madison-Detroit (513 km)
 -------------------------------------------------------------
@@ -202,6 +247,50 @@ aviones. Hacer uso de las funciones de cadenas de caracteres para formatear
 adecuadamente la salida, como por ejemplo, RPAD o TO_CHAR, tal y como
 se vio en las transparencias de clase. */
 
+CREATE  OR REPLACE PROCEDURE pr_FLIGHT_PLANE_list_info as
+
+-- variable solo visible dentro del procedimiento
+-- vars de trabajo
+
+	v_name;
+    v_pid;
+	v_eid;
+	v_mediasalario;
+
+	v_num_vuelo FWFLIGHT.FLNO%TYPE;
+    v_depairport FWFLIGHT.deptairport%TYPE;
+    v_destairport FWFLIGHT.destairport%TYPE;
+    v_distance FWFLIGHT.distance%TYPE;
+
+-- cursor para leer datos
+      CURSOR cursor_vuelos IS
+      select flno,deptairport,destairport,distance
+      from fwflight;
+
+BEGIN
+  OPEN cursor_vuelos;
+
+LOOP
+  FETCH  cursor_vuelos
+    INTO v_num_vuelo,v_depairport,v_destairport,v_distance;
+  EXIT WHEN cursor_vuelos%NOTFOUND;
+--            --> atencion  DBMS_output.put_line necesita "set serveroutput on"
+  IF p_num_vuelo LIKE vuelo THEN
+  DBMS_output.put_line('Informacion del vuelo:'||p_num_vuelo||'-'||p_depairport||'-'||p_destairport||' ('||p_distance||' km)');
+  
+  END IF;
+END LOOP;
+IF cursor_vuelos%ISOPEN 
+   THEN  CLOSE cursor_vuelos; 
+END IF;
+
+EXCEPTION
+  WHEN NO_DATA_FOUND THEN
+   DBMS_output.put_line('¡No se ha encontrado el nÃºmero de vuelo: '||vuelo||'!');
+   IF cursor_vuelos%ISOPEN 
+     THEN  CLOSE cursor_vuelos; 
+   END IF;
+END;
 
 
 
