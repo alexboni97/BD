@@ -247,46 +247,48 @@ aviones. Hacer uso de las funciones de cadenas de caracteres para formatear
 adecuadamente la salida, como por ejemplo, RPAD o TO_CHAR, tal y como
 se vio en las transparencias de clase. */
 
-CREATE  OR REPLACE PROCEDURE pr_FLIGHT_PLANE_list_info as
+CREATE  OR REPLACE PROCEDURE pr_FLIGHT_PLANE_list_info (vuelo in number) as
 
 -- variable solo visible dentro del procedimiento
 -- vars de trabajo
 
-	v_name;
-    v_pid;
-	v_eid;
-	v_mediasalario;
-
-	v_num_vuelo FWFLIGHT.FLNO%TYPE;
-    v_depairport FWFLIGHT.deptairport%TYPE;
-    v_destairport FWFLIGHT.destairport%TYPE;
-    v_distance FWFLIGHT.distance%TYPE;
+	v_name FWPLANE.NAME%TYPE;
+    v_pid FWPLANE.PID%TYPE;
+	v_numE number;
+	v_mediasalario number;
+    v_vuelo  FWFLIGHT.FLNO%TYPE;
 
 -- cursor para leer datos
-      CURSOR cursor_vuelos IS
-      select flno,deptairport,destairport,distance
-      from fwflight;
+    CURSOR cursor_lista IS
+    select a.pid,a.name,count(e.eid)as numEmp,round(avg(salary),2)as mediasalario
+    from FWPlane a join  FWCertificate c on a.pid=c.pid join FWEmpl e on e.eid=c.eid
+    where a.maxFlLength>=(select v.distance from fwflight v where v.flno=v_vuelo) 
+    group by a.pid,a.name
+    order by a.pid;
 
 BEGIN
-  OPEN cursor_vuelos;
-
+    v_vuelo:=vuelo;
+    PR_FLIGHT_PRINT(v_vuelo);
+    
+    OPEN cursor_lista;
+    
 LOOP
-  FETCH  cursor_vuelos
-    INTO v_num_vuelo,v_depairport,v_destairport,v_distance;
-  EXIT WHEN cursor_vuelos%NOTFOUND;
---            --> atencion  DBMS_output.put_line necesita "set serveroutput on"
-  IF p_num_vuelo LIKE vuelo THEN
-  DBMS_output.put_line('Informacion del vuelo:'||p_num_vuelo||'-'||p_depairport||'-'||p_destairport||' ('||p_distance||' km)');
-  
-  END IF;
+
+    DBMS_output.put_line('PID    Avion                       Núm.emp.        Media salario');
+  FETCH  cursor_lista
+    INTO v_pid,v_name,v_numE,v_mediasalario;
+  EXIT WHEN cursor_lista%NOTFOUND;
+    DBMS_output.put_line(' '||v_pid||'  '||v_name||'  '||v_numE||'   '||v_mediasalario||');
+--            --> atencion  DBMS_output.put_line necesita "set serveroutput on"  
 END LOOP;
-IF cursor_vuelos%ISOPEN 
-   THEN  CLOSE cursor_vuelos; 
+
+IF cursor_lista%ISOPEN 
+   THEN  CLOSE cursor_lista; 
 END IF;
 
 EXCEPTION
   WHEN NO_DATA_FOUND THEN
-   DBMS_output.put_line('¡No se ha encontrado el nÃºmero de vuelo: '||vuelo||'!');
+   DBMS_output.put_line('No se ha encontrado el nummero de vuelo: '||vuelo||'!');
    IF cursor_vuelos%ISOPEN 
      THEN  CLOSE cursor_vuelos; 
    END IF;
