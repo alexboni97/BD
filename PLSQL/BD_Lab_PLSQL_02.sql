@@ -106,7 +106,7 @@ Por ejemplo, si se invoca el procedimiento con la tienda 37 y la fecha
 1 de abril de 2023, el resultado debería ser el siguiente:
 
 -----------------------------------------------------------------------
-OFERTAS EL 01-04-2020 EN TIENDA 37 -- Conde de Peñalver, 44
+OFERTAS EL 01-04-2023 EN TIENDA 37 -- Conde de Peñalver, 44
 -----------------------------------------------------------------------
 Departamento:    1 -- Papelería
   No hay ofertas en este departamento.
@@ -124,52 +124,60 @@ AS
   v_id_dep2 dsdept.iddept%TYPE;
 
 
-  v_direccion dsstore.address%TYPE;
-  v_id_dep1 dsdept.iddept%TYPE;
-  v_dep_name dsdept.DESCRIPTION%TYPE;
-  v_id_offer dssaleoffer.idsale%TYPE;
+  v_address dsstore.address%TYPE;
+  v_id_dep1 dssaleoffer.iddept%TYPE;
+  v_dep_name dsdept.descr%TYPE;
+  v_id_offer dssaleoffer.idoffer%TYPE;
   v_product dssaleoffer.product%TYPE;
   v_endDate dssaleoffer.enddate%TYPE;
   v_offerItems dssaleoffer.OfferedItems%TYPE;
 
+  cursor cursor_dept IS
+  select distinct iddept, descr from dsdept where idStore=tienda order by iddept;
+
   CURSOR cursor_ofertas IS
-  SELECT s.address, o.iddept, d.descr,o.IdOffer,o.product, o.offereditems
-  FROM dsstore s  join  dssaleoffer o on s.idstore=o.idstore  join dsdept d on d.idstore=s.idstore and d.iddept=o.iddept
-  WHERE s.idstore=tienda and o.startDate<=fecha and o.endDate>=fecha
+  SELECT o.iddept,o.IdOffer,o.product, o.offereditems, o.enddate
+  FROM dssaleoffer o 
+  WHERE o.idstore=tienda and o.startDate<=fecha and o.endDate>=fecha
   order by o.iddept;
 
-  cursor cursor_dept IS
-  select distinct iddept from dsdept where idStore='37' order by iddept;
 BEGIN
-    open cursor_ofertas;
-  LOOP
+  select s.address into v_address from dsstore s WHERE s.idstore=tienda;
+    DBMS_OUTPUT.PUT_LINE('----------------------------------------');
+   DBMS_OUTPUT.PUT_LINE('OFERTAS EL '||fecha||' EN TIENDA '||tienda||' -- '||v_address||'');
+    DBMS_OUTPUT.PUT_LINE('----------------------------------------');
     open cursor_dept;
-    DMBS_OUTPUT.PUT_LINE('----------------------------------------');
-    DMBS_OUTPUT.PUT_LINE('OFERTAS EL ||fecha|| EN TIENDA ||tienda||');
-    DMBS_OUTPUT.PUT_LINE('----------------------------------------');
-    FETCH cursor_ofertas
-    INTO v_direccion, v_id_dep1, v_dep_name, v_id_offer, v_product , v_endDate , v_offerItems;
+  LOOP
+    fetch cursor_dept into v_id_dep2, v_dep_name;
+    open cursor_ofertas;
     loop
-    fetch cursor_dept into v_id_dep2
-    if(v_id_dep1=v_id_dep2) THEN 
-    DMBS_OUTPUT.PUT_LINE('DEPARTAMENTO:||||-- ||v_dep_name||');
-    DMBS_OUTPUT.PUT_LINE('Departamento:    1 -- Papelería
-  No hay ofertas en este departamento.
-Departamento:    2 -- Informática
-  o03    Monitor 27in 4K                      15-04-2023    15 unidades
-  o02    Computer i7 16Gb 1Tb HD              15-04-2023    15 unidades
-Departamento:    3 -- TV y Sonido
-  o04    Soundbar Speaker Megatron            15-05-2023    20 unidades
-');
-    END IF;
-  END LOOP
+      FETCH cursor_ofertas
+      INTO v_id_dep1, v_id_offer, v_product, v_offerItems, v_endDate;
+      if v_id_dep1=v_id_dep2 THEN 
+        DBMS_OUTPUT.PUT_LINE('DEPARTAMENTO:    '||TO_CHAR(v_id_dep1,'999')||' -- '||v_dep_name||'');
+        DBMS_OUTPUT.PUT_LINE(' '||rpad(v_id_offer,5)||'   '||rpad(v_product,37)||'        '||v_endDate||'   '||v_offerItems||' unidades');
+      ELSE 
+        DBMS_OUTPUT.PUT_LINE('NO HAY OFERTAS PARA ESTE DEPARTAMENTO');
+      END IF;
+    END LOOP;
+    CLOSE cursor_ofertas;  
+  END LOOP;
+  close cursor_dept;
 EXCEPTION
   WHEN NO_DATA_FOUND THEN 
-    DMBS_OUTPUT.PUT_LINE('NO SE HA ENCONTRADO OFERTAS EN LA TIENDA CON ESTA FECHA');
+    DBMS_OUTPUT.PUT_LINE('NO SE HA ENCONTRADO OFERTAS EN LA TIENDA CON ESTA FECHA');
   IF cursor_dept%isopen 
     then close cursor_dept;
   END IF;
 END;
+/*
+SET SERVEROUTPUT ON;
+alter session set nls_date_format='DD/MM/YYYY';
+
+BEGIN 
+p_ofertas_departamento(37,'01/04/2023');
+END;
+*/
 
 /* 2. Escribir un disparador que se active ante cualquier cambio
 en la tabla DSSale (INSERT, UPDATE, DELETE). Debe actualizar el
@@ -185,4 +193,10 @@ de esta columna a la fecha actual.
 Realizar inserciones y modificaciones en la tabla DSale para probar 
 el disparador. 
 */
-
+CREATE OR REPLACE TRIGGER updateSoldItemms
+before update or insert or delete on dssale
+for each ROW
+BEGIN 
+  if inserting THEN 
+    update dssaleoffer set solditems=solditems + :NEW.numItems
+    where idOffer
