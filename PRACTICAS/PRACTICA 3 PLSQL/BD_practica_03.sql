@@ -291,7 +291,7 @@ BEGIN
         update medicamento set medicamento.importetotaldescuentos=v_total_descuento
         where medicamento.idmed=:NEW.idmed;
         END IF;
-         IF DELETING THEN
+    ELSIF DELETING THEN
         select nvl(round(sum(m.preciodosis * p.numdosis*pa.descuento/100),2),0)as descuento
         into v_total_descuento
         from medicamento m left join prescripcion p on m.idmed=p.idmed left join paciente pa on p.idpaciente=pa.idpaciente
