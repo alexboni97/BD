@@ -274,7 +274,7 @@ END;
 
 ALTER TABLE MEDICAMENTO ADD importeTotalDescuentos NUMBER(9,2) DEFAULT 0;
 
-
+--1er intento
 CREATE OR REPLACE TRIGGER t_actualizar_descuentos
     after insert or update or delete on prescripcion
     FOR EACH ROW
@@ -290,7 +290,6 @@ BEGIN
 
         update medicamento set medicamento.importetotaldescuentos=v_total_descuento
         where medicamento.idmed=:NEW.idmed;
-        END IF;
     ELSIF DELETING THEN
         select nvl(round(sum(m.preciodosis * p.numdosis*pa.descuento/100),2),0)as descuento
         into v_total_descuento
@@ -301,4 +300,39 @@ BEGIN
         where medicamento.idmed=:OLD.idmed;
 
     END IF;
+END;
+
+--2do intwnto 
+
+CREATE OR REPLACE TRIGGER t_actualizar_descuentos
+    after insert or update or delete on prescripcion
+    for each row
+DECLARE
+    v_total_descuento NUMBER(9,2);
+    v_idmed medicamento.idmed%type;
+    
+    cursor cursor_descuentos is 
+    select m.idmed, nvl(round(sum(m.preciodosis * p.numdosis*pa.descuento/100),2),0)as descuento
+    from medicamento m left join prescripcion p on m.idmed=p.idmed left join paciente pa on p.idpaciente=pa.idpaciente
+    group by m.idmed
+    order by m.idmed;
+BEGIN 
+    IF INSERTING OR UPDATING THEN
+        for v_row in cursor_descuentos loop
+            if v_row.idmed= :NEW.idmed then
+                v_total_descuento:=v_row.descuento;
+                v_idmed:= :NEW.idmed;
+            end if;
+        end loop;
+        
+    elsif deleting then
+        for v_row in cursor_descuentos loop
+            if v_row.idmed= :OLD.idmed then
+                v_total_descuento:=v_row.descuento;
+                v_idmed:= :OLD.idmed;
+            end if;
+        end loop;
+    end if;
+    update medicamento set medicamento.importetotaldescuentos=v_total_descuento
+    where medicamento.idmed=v_idmed;
 END;
