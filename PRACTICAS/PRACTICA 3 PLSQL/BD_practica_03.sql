@@ -336,3 +336,34 @@ BEGIN
     update medicamento set medicamento.importetotaldescuentos=v_total_descuento
     where medicamento.idmed=v_idmed;
 END;
+
+--3er intetno 
+CREATE OR REPLACE TRIGGER t_actualizar_descuentos
+    after insert or update or delete on prescripcion
+    FOR EACH ROW
+DECLARE
+    v_descuento_nuevo NUMBER(9,2);
+    v_descuento_anterior NUMBER(9,2);
+    v_porcentaje paciente.descuento%type;
+    
+    
+BEGIN 
+    select descuento into v_porcentaje from paciente where idpaciente = :NEW.idpaciente;
+    IF INSERTING THEN
+        v_descuento_nuevo := ((v_porcentaje/100) * (:NEW.numdosis));
+        update medicamento set importetotaldescuentos=importetotaldescuentos + v_descuento_nuevo*preciodosis
+        where idmed=:NEW.idmed;
+        
+    ELSIF UPDATING THEN
+        v_descuento_nuevo: = v_porcentaje/100 * :NEW.numdosis;
+        v_descuento_anterior: = v_porcentaje/100 * :OLD.numdosis;
+        update medicamento set importetotaldescuentos=(importetotaldescuentos + v_descuento_nuevo*preciodosis - v_descuento_anterior*preciodosis)
+        where idmed=:NEW.idmed;
+    
+    ELSIF DELETING THEN
+        v_descuento_anterior: = (v_porcentaje/100) * (:OLD.numdosis);
+        update medicamento set importetotaldescuentos=importetotaldescuentos - v_descuento_anterior*preciodosis
+        where idmed=:OLD.idmed;
+
+    END IF;
+END;
